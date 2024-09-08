@@ -1,3 +1,5 @@
 # LMSYS-Chatbot-Arena-Human-Preference-Predictions
 # Background(背景)
+The competition requires participants to address an important challenge through algorithmic modeling: how to make the responses of large language models (LLMs) more aligned with user preferences. The contest utilizes a large dataset collected from Chatbot Arena, where users chat with two anonymous LLMs and select the answer they prefer more. The task for participants is to predict which answer users will prefer in these duels. The work of outstanding participants can assist businesses and governments in developing LLMs that can adjust responses according to individual user preferences, ultimately making AI-driven dialogue systems more user-friendly and widely accepted. The evaluation criterion for the competition is the log loss between the predicted probabilities and the actual values.
+
 竞赛要求参赛者通过算法建模解决一个重要的挑战：如何让大型语言模型（LLMs）的响应更加符合用户的偏好。比赛使用了一个从Chatbot Arena收集的大型数据集，在这个平台上，用户与两个匿名的LLMs聊天，并选择他们更喜欢的回答。参赛者的任务是预测用户在这些对决中会更喜欢哪个回答。优秀参赛者的工作可以帮助企业和政府开发出能够根据用户个性化偏好调整响应的LLM，最终使AI驱动的对话系统更加用户友好，并被广泛接受。比赛的评估标准是预测概率与真实值之间的对数损失。
