@@ -1,5 +1,5 @@
 from transformers import (
-    Gemma2ForSequenceClassification, 
+    Gemma2ForSequenceClassification,
     GemmaTokenizerFast,
     EvalPrediction,
     Trainer,
@@ -8,7 +8,7 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training, TaskType
 from sklearn.metrics import log_loss, accuracy_score
-from utils import CustomTokenizerForHumanPreference
+from utils import CustomTokenizerForHumanPreference, compute_metrics
 from datasets import Dataset
 import argparse
 import os
@@ -22,7 +22,7 @@ os.environ["CUDA_VISIBLE_DEVICE"] = (
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parameters for the training script")
-    parser.add_argument("--DATA",type=str,default="train.csv")
+    parser.add_argument("--DATA", type=str, default="train.csv")
     parser.add_argument("--output_dir", type=str, default="outputs")
     parser.add_argument("--model_path", type=str, default="../gemma-2-9b-it-bnb-4bit")
     parser.add_argument("--max_length", type=int, default=1536)
@@ -43,10 +43,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     tokenizer = GemmaTokenizerFast.from_pretrained(args.model_path)
+    tokenizer.add_eos_token = True  # add <eos> token at the end of sequence
+    tokenizer.padding_side = "right"  # 右padding
+
     data = pd.read_csv(args.DATA)
     ds = Dataset.from_pandas(data)
-    arranger = CustomTokenizerForHumanPreference(tokenizer=tokenizer,max_length=args.max_length)
-    ds = ds.map(arranger,batched=True)
+    arranger = CustomTokenizerForHumanPreference(
+        tokenizer=tokenizer, max_length=args.max_length
+    )
+    ds = ds.map(arranger, batched=True)
 
     lora_config = LoraConfig(
         r=args.lora_r,
@@ -71,10 +76,15 @@ if __name__ == "__main__":
         torch_dtype=torch.float16,
         device_map="auto",
     )
+    model.config.use_cache = False
+    model = prepare_model_for_kbit_training(model)
+    model = get_peft_model(model, lora_config)
+    model.print_trainable_parameters()
+
     training_args = TrainingArguments(
-        output_dir = args.output_dir,
-        overwrite_output_dir = True,
-        report_to = "none",
+        output_dir=args.output_dir,
+        overwrite_output_dir=True,
+        report_to="none",
         num_train_epochs=args.n_epochs,
         per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
@@ -83,11 +93,31 @@ if __name__ == "__main__":
         eval_strategy="epoch",
         save_strategy="step",
         save_steps=200,
-        save_total_limit=1,#only keep the latest checkpoint
-        optim = args.optim_type,
+        save_total_limit=1,  # only keep the latest checkpoint
+        optim=args.optim_type,
         metric_for_best_model="log_loss",
         fp16=True,
         learning_rate=args.lr,
-        warmup_steps = args.warmup_steps     
+        warmup_steps=args.warmup_steps,
     )
 
+    folds = [
+        (
+            [i for i in range(len(ds)) if i % args.n_splits != fold_idx],
+            [i for i in range(len(ds)) if i % args.n_splits == fold_idx and i < 58000],
+        )
+        for fold_idx in range(args.n_splits)
+    ]
+
+    train_idx, eval_idx = folds[args.fold_idx]
+    
+    trainer = Trainer(
+        args=training_args,
+        model=model,
+        tokenizer = tokenizer,
+        train_dataset=ds.select(train_idx),
+        eval_dataset = ds.select(eval_idx),
+        compute_metrics=compute_metrics,
+        data_collator=DataCollatorWithPadding(tokenizer=tokenizer)
+    )
+trainer.train()
