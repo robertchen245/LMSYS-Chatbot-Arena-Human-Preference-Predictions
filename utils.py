@@ -31,8 +31,11 @@ class CustomTokenizerForHumanPreference(CustomTokenizer):
         return {**tokenized,"labels":labels}
     @staticmethod
     def process_text(text:str,prefix=str)->str:
-        list_of_text = ast.literal_eval(text)
-        return " ".join([f"<{prefix}:{i+1}>:" + text for i,text in enumerate(list_of_text)])
+        try:
+            list_of_text = eval(text,{"null":""})
+            return " ".join([f"<{prefix}:{i+1}>:" + text for i,text in enumerate(list_of_text)])
+        except:
+            print(text)
 def compute_metrics(eval_pred:EvalPrediction): # Type: numpy NDArray
     preds = eval_pred.predictions
     labels = eval_pred.label_ids

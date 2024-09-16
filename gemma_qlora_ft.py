@@ -16,22 +16,22 @@ import torch
 import pandas as pd
 
 os.environ["CUDA_VISIBLE_DEVICE"] = (
-    "0"  # setting the visible computing resources 设置环境可见的运算资源
+    "0,2,3"  # setting the visible computing resources 设置环境可见的运算资源
 )
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("parameters for the training script")
-    parser.add_argument("--DATA", type=str, default="train.csv")
+    parser.add_argument("--DATA", type=str, default="../train.csv")
     parser.add_argument("--output_dir", type=str, default="outputs")
-    parser.add_argument("--model_path", type=str, default="../gemma-2-9b-it-bnb-4bit")
+    parser.add_argument("--model_path", type=str, default="../../gemma-2-9b-it-bnb-4bit")
     parser.add_argument("--max_length", type=int, default=1536)
     parser.add_argument("--n_splits", type=int, default=100)
     parser.add_argument("--fold_idx", type=int, default=0)
     parser.add_argument("--optim_type", type=str, default="adamw_8bit")
-    parser.add_argument("--per_device_train_batch_size", type=int, default=8)
+    parser.add_argument("--per_device_train_batch_size", type=int, default=4)
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1)
-    parser.add_argument("--per_device_eval_batch_size", type=int, default=8)
+    parser.add_argument("--per_device_eval_batch_size", type=int, default=4)
     parser.add_argument("--n_epochs", type=int, default=1)
     parser.add_argument("--freeze_layers", type=int, default=16)
     parser.add_argument("--lr", type=float, default=8e-5)
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     parser.add_argument("--lora_alpha", type=float, default=64)
     parser.add_argument("--lora_dropout", type=float, default=0.00)
     parser.add_argument("--lora_bias", type=str, default="none")
+    parser.add_argument("--warmup_steps",type=int,default=20)
 
     args = parser.parse_args()
 
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         per_device_eval_batch_size=args.per_device_eval_batch_size,
         logging_steps=200,
         eval_strategy="epoch",
-        save_strategy="step",
+        save_strategy="steps",
         save_steps=200,
         save_total_limit=1,  # only keep the latest checkpoint
         optim=args.optim_type,
